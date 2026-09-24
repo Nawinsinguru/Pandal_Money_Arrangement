@@ -7,7 +7,6 @@ from sqlalchemy import (
     ForeignKey,
     Numeric,
     Text,
-    Boolean
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
@@ -22,69 +21,48 @@ class ExpenseTransaction(Base):
     id = Column(
         UUID(as_uuid=True),
         primary_key=True,
-        default=uuid.uuid4
+        default=uuid.uuid4,
+    )
+
+    # Idempotency key: prevents the same submit request from creating
+    # the same expense transaction more than once.
+    request_id = Column(
+        UUID(as_uuid=True),
+        unique=True,
+        nullable=True,
+        index=True,
     )
 
     pandal_id = Column(
         UUID(as_uuid=True),
         ForeignKey("pandals.id", ondelete="CASCADE"),
-        nullable=False
+        nullable=False,
     )
 
-    expense_type = Column(
-        String(30),
-        nullable=False
-    )
-
-    item_name = Column(
-        String(200),
-        nullable=False
-    )
-
-    amount = Column(
-        Numeric(12, 2),
-        nullable=False
-    )
+    expense_type = Column(String(30), nullable=False)
+    item_name = Column(String(200), nullable=False)
+    amount = Column(Numeric(12, 2), nullable=False)
 
     spent_by = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id"),
-        nullable=False
+        nullable=False,
     )
 
-    payment_method = Column(
-        String(30),
-        nullable=False
-    )
-
-    expense_date = Column(
-        Date,
-        nullable=False
-    )
-
-    expense_time = Column(
-        Time,
-        nullable=False
-    )
-
-    proof_url = Column(
-        String(500),
-        nullable=False
-    )
-
-    notes = Column(
-        Text,
-        nullable=True
-    )
+    payment_method = Column(String(30), nullable=False)
+    expense_date = Column(Date, nullable=False)
+    expense_time = Column(Time, nullable=False)
+    proof_url = Column(String(500), nullable=False)
+    notes = Column(Text, nullable=True)
 
     created_by = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id"),
-        nullable=False
+        nullable=False,
     )
 
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
-        nullable=False
+        nullable=False,
     )

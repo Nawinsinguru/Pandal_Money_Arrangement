@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -108,6 +108,11 @@ function Dashboard() {
 
   const [activeSection, setActiveSection] = useState("overview");
   const [modal, setModal] = useState(null);
+  const [savingIncome, setSavingIncome] = useState(false);
+  const [savingExpense, setSavingExpense] = useState(false);
+
+  const incomeSubmittingRef = useRef(false);
+  const expenseSubmittingRef = useRef(false);
 
   const [incomeForm, setIncomeForm] = useState({
     category: "sponsor",
@@ -227,24 +232,31 @@ function Dashboard() {
   const submitIncome = async (e) => {
     e.preventDefault();
 
+    if (incomeSubmittingRef.current) {
+      return;
+    }
+
     if (!incomeForm.proof_file) {
       alert("Please upload the transaction proof image.");
       return;
     }
 
+    incomeSubmittingRef.current = true;
+    setSavingIncome(true);
+
+    const requestId = crypto.randomUUID();
+
     try {
       // 1. Upload proof image
       const formData = new FormData();
       formData.append("file", incomeForm.proof_file);
-      console.log("Proof file:", incomeForm.proof_file);
-      console.log("FormData file:", formData.get("file"));
 
       const uploadResponse = await api.post("/uploads/proof", formData);
-
       const proofUrl = uploadResponse.data.proof_url;
 
       // 2. Save income transaction
       await api.post(`/pandals/${pandal.id}/income`, {
+        request_id: requestId,
         category: incomeForm.category,
         source_name: incomeForm.source_name,
         amount: Number(incomeForm.amount),
@@ -276,16 +288,28 @@ function Dashboard() {
       await loadData(true);
     } catch (err) {
       alert(err.response?.data?.detail || "Unable to add income.");
+    } finally {
+      incomeSubmittingRef.current = false;
+      setSavingIncome(false);
     }
   };
 
   const submitExpense = async (e) => {
     e.preventDefault();
 
+    if (expenseSubmittingRef.current) {
+      return;
+    }
+
     if (!expenseForm.proof_file) {
       alert("Please upload the transaction proof image.");
       return;
     }
+
+    expenseSubmittingRef.current = true;
+    setSavingExpense(true);
+
+    const requestId = crypto.randomUUID();
 
     try {
       // 1. Upload proof image
@@ -293,11 +317,11 @@ function Dashboard() {
       formData.append("file", expenseForm.proof_file);
 
       const uploadResponse = await api.post("/uploads/proof", formData);
-
       const proofUrl = uploadResponse.data.proof_url;
 
       // 2. Prepare expense payload
       const payload = {
+        request_id: requestId,
         expense_type: expenseForm.expense_type,
         item_name: expenseForm.item_name,
         amount: Number(expenseForm.amount),
@@ -313,7 +337,7 @@ function Dashboard() {
         payload.cash_details = expenseForm.cash_details;
       }
 
-      // 3. Save expense
+      // 3. Save expense transaction
       await api.post(`/pandals/${pandal.id}/expenses`, payload);
 
       setModal(null);
@@ -342,6 +366,9 @@ function Dashboard() {
       await loadData(true);
     } catch (err) {
       alert(err.response?.data?.detail || "Unable to add expense.");
+    } finally {
+      expenseSubmittingRef.current = false;
+      setSavingExpense(false);
     }
   };
 
@@ -962,7 +989,13 @@ function Dashboard() {
               }
             />
 
-            <button className="primary-button">Save income</button>
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={savingIncome}
+            >
+              {savingIncome ? "Saving income..." : "Save income"}
+            </button>
           </form>
         </Modal>
       )}
@@ -1191,7 +1224,13 @@ function Dashboard() {
               }
             />
 
-            <button className="primary-button">Save expense</button>
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={savingExpense}
+            >
+              {savingExpense ? "Saving expense..." : "Save expense"}
+            </button>
           </form>
         </Modal>
       )}
