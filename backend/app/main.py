@@ -18,6 +18,22 @@ app = FastAPI(
     title="Pandal Budget Manager",
     version="1.0.0",
 )
+
+@app.middleware("http")
+async def strip_api_prefix(request, call_next):
+    path = request.scope["path"]
+
+    if path == "/api":
+        request.scope["path"] = "/"
+        request.scope["raw_path"] = b"/"
+    elif path.startswith("/api/"):
+        new_path = path[4:]
+        request.scope["path"] = new_path
+        request.scope["raw_path"] = new_path.encode("utf-8")
+
+    response = await call_next(request)
+    return response
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
